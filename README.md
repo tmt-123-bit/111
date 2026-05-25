@@ -1,6 +1,5 @@
-MARL-LEO-Routing
-
-研究方向：在高动态的低轨卫星网络（LEO Satellite Networks）中实现快速、分布式、协同的动态路由。
+研究方向：在高动态的低轨卫星网络（LEO Satellite Networks）中做一个快速、分布式、能协同的动态路由
+（让卫星自己学路由，不靠地面基站全局控制）
 
 
 一、核心问题
@@ -17,10 +16,22 @@ MARL-LEO-Routing
    各卫星独立追求局部最优，易导致全局拥塞、路径震荡或流量集中。
    https://arxiv.org/pdf/2605.04448这篇文章中
    首先用
-   <img width="531" height="111" alt="image" src="https://github.com/user-attachments/assets/b989a11b-137d-4e18-b785-ffdc2806cfbe" />
+   $$
+   D(i, j) = \frac{\|ij\|}{c} + \frac{B}{R(i, j)} + t_q(i).
+   $$
    这个公式将队列积压直接量化为时延的一部分，为路由决策必须感知队列状态提供了数学基础
    其次，这几个公式
-   <img width="537" height="372" alt="image" src="https://github.com/user-attachments/assets/a1e05341-81ab-497c-a73c-bd5ce4f12ce2" />
+   $$
+   \begin{aligned}
+   \min_{R_{g,d}} &: \sum_{p=1}^{|P_{gd}|} D_p(g, d), \forall g, d \in \mathbb{G}, g \neq d \\
+   \text{Subject to:} \\
+   C1 &: f_{i,j} \leq R(i,j) \, \forall i, j \in N \\
+   C2 &: \sum_{e_j \in \varepsilon_{i,s}} f_{j,i} = \sum_{e_k \in \varepsilon_{i,s}} f_{i,k} \, \forall i \in \mathbb{S} \\
+   C3 &: f_{i,i} = 0 \, \forall i \in N \\
+   C5 &: \left( 1 - (1 - P_{out}^u)(1 - P_{out}^d) \times \prod_{\substack{\forall i,j \in N \\ i \neq j}} (1 - P_{out}^{i,j}) \right) \leq P_{out}^{\text{threshold}}
+   \end{aligned}
+   \tag{12}
+   $$
    目标函数要求全局最优目标，最小化所有源（目的地对的所有路径的端到端时延之和）
    C1和C2保证全局流量分布合理，避免局部过载
    C5要求所有节点协作防止整个网络被破坏
@@ -30,50 +41,51 @@ MARL-LEO-Routing
    传统路由只看传播时延/跳数，但卫星网络中真正导致时延上升的是节点队列积压和链路拥塞。
    https://arxiv.org/pdf/2306.01346
    这篇文章中说LEO网络时延在非拥塞时由传播时延主导，拥塞时由排队时延主导，设计队列感知的奖励函数：算法设计中，奖励值明确包含了下一跳节点的队列时间 r_queue，并对队列时间增长施以指数级惩罚（这个公式我个人理解为，如果j的落地链路直连目的地面站，也就是到达目的地，就是奖励；如果j是当前数据包已访问过的节点，为了避免形成环路所以要惩罚）
-   <img width="491" height="263" alt="image" src="https://github.com/user-attachments/assets/5b2e19eb-85c1-4c5e-878b-da115fccccbd" />
-   此方案抗拥塞更优，队列时延可控（原文中证据如下图）
-   <img width="552" height="669" alt="image" src="https://github.com/user-attachments/assets/80afe23a-1852-4ebf-a6da-9d29216504ed" />
+   $$
+   \begin{aligned}
+   \min_{R_{g,d}} &: \sum_{p=1}^{|P_{gd}|} D_p(g, d), \forall g, d \in \mathbb{G}, g \neq d \\
+   \text{Subject to:} \\
+   C1 &: f_{i,j} \leq R(i,j) \, \forall i, j \in N \\
+   C2 &: \sum_{e_j \in \varepsilon_{i,s}} f_{j,i} = \sum_{e_k \in \varepsilon_{i,s}} f_{i,k} \, \forall i \in \mathbb{S} \\
+   C3 &: f_{i,i} = 0 \, \forall i \in N \\
+   C5 &: \left( 1 - (1 - P_{out}^u)(1 - P_{out}^d) \times \prod_{\substack{\forall i,j \in N \\ i \neq j}} (1 - P_{out}^{i,j}) \right) \leq P_{out}^{\text{threshold}}
+   \end{aligned}
+   \tag{12}
+   $$
+   此方案抗拥塞更优，队列时延可控
    目标：在路由决策中显式引入队列状态、负载和拥塞惩罚，实现队列感知的动态路由。
 
 
-二、核心技术方案：集中训练，分布式执行（CTDE）
+二、核心机制：集中训练，分布式执行（CTDE）
 
-训练阶段（地面）：使用全局网络状态和全局协同奖励函数，集中训练全局策略。
-执行阶段（星上）：每颗卫星复制训练好的轻量策略模型，仅依据局部观测和邻居信息独立做出下一跳决策。
+训练阶段（地面）：使用全局网络状态和全局协同奖励函数，集中训练全局策略
+执行阶段（星上）：每颗卫星仅根据局部观测和邻居信息独立选择下一跳
 在线自适应：部署后，卫星可依据本地观测持续微调策略。
 
 
 三、系统模型
-
 将卫星网络建模为时变图 G(t) = (V, E(t), X(t))，其中：
-- V 是卫星节点集合，共 N 颗卫星
-- E(t) 是时刻 t 的可用星间链路集合
-- X(t) 是全网节点和链路的状态信息
-
+V 是卫星节点集合，共 N 颗卫星
+E(t) 是时刻 t 的可用星间链路集合
+X(t) 是全网节点和链路的状态信息
 每颗卫星是一个独立的智能体，共 N 个智能体。
 
 
 四、决策流程（执行阶段）
-
 1. 局部观测：卫星 i 获取一跳邻居的状态信息，包括自身状态、邻居状态、链路状态
-
 2. 状态空间（决策输入）：
    - 自己的队列长度
    - 每条可选链路的剩余带宽、传播时延、负载率、可靠性
    - 链路的剩余可用时间（异轨链路穿过极区或反向缝时会断开，需要提前规避）
-
 3. 邻居信息交换：通过轻量级 Hello 包交换队列长度、负载率和可用状态
-
 4. 动作选择（带过滤机制）：
    先过滤掉不可用的链路（即将断开、可靠性过低、带宽不足的），
    然后计算每条候选链路的综合代价（包含传播时延、下一跳队列长度、链路负载、链路稳定性），
    选择代价最小的邻居作为下一跳。
-
 5. 执行策略：所有卫星共享同一个策略网络，减少星上存储和计算开销。
 
 
 五、奖励函数设计（训练阶段）
-
 全局协同奖励函数（训练时使用）：
 综合考虑六个目标——端到端时延、全网队列积压、负载不均衡度、路由切换次数、吞吐量、控制消息开销。
 前五个越小越好（取负号），吞吐量越大越好（取正号）。
@@ -81,27 +93,8 @@ MARL-LEO-Routing
 本地即时奖励函数（星上微调用）：
 包含传播时延代价、下一跳队列惩罚、链路负载代价、到达目的地奖励、环路惩罚。
 
-
-六、关键文献支撑
-
-- QRLSN（CJA 2022）：证明了分布式 Q-learning 在卫星网络中的有效性，提供 O(n) 路由维护复杂度
-- arXiv 2023（Soret et al.）：指出 LEO 时延在拥塞时由队列主导，设计了队列感知的指数惩罚奖励函数
-- arXiv 2026（Liaq et al.）：提出了队列感知的 MA-DRL 框架，采用全局 Q 网络训练与分布式执行
-- SDRP-DQL（2026）：提出基于排队论的拥塞趋势预测奖励
-
-
-七、评价指标
-
+六、评价指标
 时延与效率：平均端到端时延、吞吐量、丢包率、投递成功率
 拥塞与负载：平均队列长度、负载均衡度
 稳定性与开销：路由切换次数、故障恢复时间、路由开销、收敛时间
 可行性：计算复杂度
-
-
-八、下一步计划
-
-- 明确两跳邻居观测的取舍
-- 确定奖励函数的最终权重组合
-- 搭建基于 Python 的 LEO 卫星网络仿真环境
-- 实现基准算法（Dijkstra、Q-routing）和本文提出的 MARL 路由算法
-- 进行对比实验与消融实验，验证各组件有效性
