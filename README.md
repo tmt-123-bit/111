@@ -46,19 +46,8 @@
    https://arxiv.org/pdf/2306.01346
    这篇文章中说LEO网络时延在非拥塞时由传播时延主导，拥塞时由排队时延主导，设计队列感知的奖励函数：算法设计中，奖励值明确包含了下一跳节点的队列时间 r_queue，并对队列时间增长施以指数级惩罚（这个公式我个人理解为，如果j的落地链路直连目的地面站，也就是到达目的地，就是奖励；如果j是当前数据包已访问过的节点，为了避免形成环路所以要惩罚）
    
-   $$
-   \begin{aligned}
-   \min_{\{R_{g,d}\}} &: \sum_{p=1}^{|P_{gd}|} D_p(g, d), \forall\ g, d \in \mathbb{G}, g \neq d \\
-   \text{Subject to:} & \\
-   \text{C1} &: f_{i,j} \leq R(i,j), \forall\ i, j \in N \\
-   \text{C2} &: \sum_{e_j \in \varepsilon_{i,s}} f_{j,i} = \sum_{e_k \in \varepsilon_{i,s}} f_{i,k}, \forall\ i \in \mathbb{S} \\
-   \text{C3} &: f_{i,i} = 0, \forall\ i \in N \\
-   \text{C5} &: \left( 1 - (1 - P_{\text{out}}^u)(1 - P_{\text{out}}^d) \times \prod_{\forall\ i,j \in N, i \neq j} (1 - P_{\text{out}}^{i,j}) \right) \leq
-   P_{\text{out}}^{\text{threshold}}
-   \end{aligned}
-   \tag{12}
-   $$
-   
+  <img width="491" height="263" alt="image" src="https://github.com/user-attachments/assets/7fe557d9-842c-46c7-95d5-2f72ade8e611" />
+
    此方案抗拥塞更优，队列时延可控
    目标：在路由决策中显式引入队列状态、负载和拥塞惩罚，实现队列感知的动态路由。
 
