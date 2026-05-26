@@ -48,12 +48,13 @@
    
    $$
    \begin{aligned}
-   \min_{R_{g,d}} &: \sum_{p=1}^{|P_{gd}|} D_p(g, d), \forall g, d \in \mathbb{G}, g \neq d \\
-   \text{Subject to:} \\
-   C1 &: f_{i,j} \leq R(i,j) \, \forall i, j \in N \\
-   C2 &: \sum_{e_j \in \varepsilon_{i,s}} f_{j,i} = \sum_{e_k \in \varepsilon_{i,s}} f_{i,k} \, \forall i \in \mathbb{S} \\
-   C3 &: f_{i,i} = 0 \, \forall i \in N \\
-   C5 &: \left( 1 - (1 - P_{out}^u)(1 - P_{out}^d) \times \prod_{\substack{\forall i,j \in N \\ i \neq j}} (1 - P_{out}^{i,j}) \right) \leq P_{out}^{\text{threshold}}
+   \min_{\{R_{g,d}\}} &: \sum_{p=1}^{|P_{gd}|} D_p(g, d), \forall\ g, d \in \mathbb{G}, g \neq d \\
+   \text{Subject to:} & \\
+   \text{C1} &: f_{i,j} \leq R(i,j), \forall\ i, j \in N \\
+   \text{C2} &: \sum_{e_j \in \varepsilon_{i,s}} f_{j,i} = \sum_{e_k \in \varepsilon_{i,s}} f_{i,k}, \forall\ i \in \mathbb{S} \\
+   \text{C3} &: f_{i,i} = 0, \forall\ i \in N \\
+   \text{C5} &: \left( 1 - (1 - P_{\text{out}}^u)(1 - P_{\text{out}}^d) \times \prod_{\forall\ i,j \in N, i \neq j} (1 - P_{\text{out}}^{i,j}) \right) \leq
+   P_{\text{out}}^{\text{threshold}}
    \end{aligned}
    \tag{12}
    $$
